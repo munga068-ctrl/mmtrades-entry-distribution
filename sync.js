@@ -18,6 +18,14 @@ const HEADERS_BASE = {
   "Content-Type": "application/json",
 };
 
+const DEBUG_LOG = { attempts: [], tokenPresent: !!NOTION_TOKEN, tokenLength: NOTION_TOKEN ? NOTION_TOKEN.length : 0 };
+
+function writeDebugLog() {
+  try {
+    fs.writeFileSync(".sync-debug.json", JSON.stringify(DEBUG_LOG, null, 2), "utf8");
+  } catch (e) { /* best effort */ }
+}
+
 async function queryAllPages() {
   const attempts = [
     { url: `https://api.notion.com/v1/data_sources/${DATA_SOURCE_ID}/query`, notionVersion: "2025-09-03" },
@@ -29,9 +37,11 @@ async function queryAllPages() {
     try {
       const rows = await paginateQuery(attempt.url, attempt.notionVersion);
       console.log(`Fetched ${rows.length} rows via ${attempt.url}`);
+      DEBUG_LOG.attempts.push({ url: attempt.url, ok: true, rows: rows.length });
       return rows;
     } catch (err) {
       console.warn(`Attempt against ${attempt.url} failed: ${err.message}`);
+      DEBUG_LOG.attempts.push({ url: attempt.url, ok: false, error: err.message });
       lastError = err;
     }
   }
@@ -103,8 +113,10 @@ const ENTRY_TIMESTAMPS_UTC = ${tsLiteral};
     const pages = await queryAllPages();
     const timestamps = extractTimestamps(pages);
     updateHtml(timestamps);
+    writeDebugLog();
   } catch (err) {
     console.error("Sync failed:", err);
+    writeDebugLog();
     process.exit(1);
   }
 })();
