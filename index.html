@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entry Time Distribution</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem('mmtrades-theme');
+    var theme = saved || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){ /* localStorage unavailable; defaults to light */ }
+})();
+</script>
+<style>
+  :root{
+    --ink:#14171c;
+    --muted:#6b7280;
+    --line:#e7e9ec;
+    --green:#0f8a4c;
+    --red:#d1352b;
+    --blue-50:#E6F1FB;
+    --blue-100:#B5D4F4;
+    --blue-200:#85B7EB;
+    --blue-400:#378ADD;
+    --blue-600:#185FA5;
+    --blue-800:#0C447C;
+    --blue-900:#042C53;
+    --panel:#fafbfc;
+    --bg:#ffffff;
+    --btn-bg:#ffffff;
+    --hover-bg:#f4f5f6;
+    --synced-c:#a7abb2;
+    --stale-c:#e0a83b;
+    --grid-line:#f0f1f3;
+    --cell-empty:#f4f5f6;
+  }
+  html[data-theme="dark"]{
+    --ink:#e7e9ee;
+    --muted:#9aa1ac;
+    --line:#2a2f38;
+    --green:#33c47a;
+    --red:#f0635a;
+    --panel:#171a1f;
+    --bg:#0f1115;
+    --btn-bg:#1b1e24;
+    --hover-bg:#20242b;
+    --synced-c:#5b6068;
+    --stale-c:#e0a83b;
+    --grid-line:#20242b;
+    --cell-empty:#20242b;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ height:100%; min-height:100vh; }
+  body{
+    margin:0; padding:28px 32px 60px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    max-width:1180px; margin-left:auto; margin-right:auto;
+  }
+  .top-bar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  h1{ font-size:20px; margin:0; font-weight:700; letter-spacing:-0.01em; }
+  .top-actions{ display:flex; align-items:center; gap:10px; }
+  .icon-btn{
+    border:1px solid var(--line); background:var(--btn-bg); border-radius:8px;
+    width:32px; height:32px; cursor:pointer; font-size:15px; color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{ background:var(--hover-bg); }
+  .icon-btn.spin svg{ animation:spin 0.8s linear infinite; }
+  @keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  .status-line{ font-size:12px; color:var(--synced-c); margin-bottom:22px; }
+  .status-line.stale{ color:var(--stale-c); }
+  .subtitle{ font-size:13px; color:var(--muted); margin:-2px 0 22px; }
+  .chart-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:16px 18px 16px; margin-bottom:20px;
+  }
+  .chart-card h3{ margin:0 0 4px; font-size:13px; font-weight:700; color:var(--ink); }
+  .chart-card .caption{ font-size:12px; color:var(--muted); margin:0 0 14px; }
+  .chart-card .chart-body{ position:relative; height:320px; }
+  .heatmap-scroll{ overflow-x:auto; padding-bottom:6px; }
+  .heatmap-row{ display:flex; gap:2px; width:max-content; }
+  .heatmap-axis{ display:flex; gap:2px; margin-top:6px; width:max-content; }
+  .heatmap-cell{
+    width:11px; height:30px; flex-shrink:0; border-radius:2px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:600;
+  }
+  .heatmap-tick{ width:11px; flex-shrink:0; text-align:center; font-size:9px; color:var(--muted); }
+  .heatmap-gap{ width:6px; flex-shrink:0; }
+  .legend{ display:flex; align-items:center; gap:6px; margin-top:12px; font-size:11px; color:var(--muted); }
+  .legend .swatch{ width:11px; height:11px; border-radius:2px; }
+  footer{ text-align:center; font-size:11px; color:var(--muted); margin-top:8px; }
+  @media (max-width:640px){
+    body{ padding:20px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <h1>Entry Time Distribution</h1>
+    <div class="top-actions">
+      <button class="icon-btn" id="syncBtn" title="Refresh with the latest synced data">
+        <svg id="syncIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme">
+        <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+    </div>
+  </div>
+  <div class="status-line" id="statusLine">&nbsp;</div>
+  <p class="subtitle">Backtesting database &middot; 9:30 AM&ndash;4:00 PM ET &middot; 5-minute buckets &middot; <span id="tradeCountLabel"></span> trades</p>
+
+  <div class="chart-card">
+    <h3>Entry Time Distribution — Full Trading Day</h3>
+    <p class="caption">Number of trades by entry time (ET)</p>
+    <div class="chart-body"><canvas id="lineChart"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Entry Time Heatmap</h3>
+    <p class="caption">Same 5-minute buckets, colored by trade count &middot; 12:00&ndash;1:30 PM lunch window trimmed for visibility</p>
+    <div class="heatmap-scroll">
+      <div class="heatmap-row" id="heatmapRow"></div>
+      <div class="heatmap-axis" id="heatmapAxis"></div>
+    </div>
+    <div class="legend">
+      <span>Fewer</span>
+      <span class="swatch" style="background:var(--blue-50)"></span>
+      <span class="swatch" style="background:var(--blue-100)"></span>
+      <span class="swatch" style="background:var(--blue-200)"></span>
+      <span class="swatch" style="background:var(--blue-400)"></span>
+      <span class="swatch" style="background:var(--blue-600)"></span>
+      <span class="swatch" style="background:var(--blue-800)"></span>
+      <span class="swatch" style="background:var(--blue-900)"></span>
+      <span>More</span>
+    </div>
+  </div>
+
+  <footer>Synced from Notion (BACKTESTING database) &middot; entry times converted from UTC to America/New_York</footer>
+
+<script>
+// SYNC_MARKER_START
+// Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
+const DATA_SYNCED_AT = "2026-08-30T00:00:00.000Z";
+const ENTRY_TIMESTAMPS_UTC = ["2025-09-02T14:35:00Z","2025-09-05T14:10:00Z","2025-10-06T15:03:00Z","2025-10-06T19:15:00Z","2025-10-07T14:50:00Z","2025-10-08T14:01:00Z","2025-10-14T14:10:00Z","2025-10-14T19:30:00Z","2025-10-16T15:34:00Z","2025-10-23T15:50:00Z","2025-10-24T15:11:00Z","2025-10-24T19:30:00Z","2025-10-28T15:45:00Z","2025-10-28T19:45:00Z","2025-10-29T14:45:00Z","2025-10-29T19:47:00Z","2025-10-30T19:05:00Z","2025-10-31T15:50:00Z","2025-11-03T15:18:00Z","2025-11-03T18:47:00Z","2025-11-03T20:15:00Z","2025-11-04T16:04:00Z","2025-11-04T19:30:00Z","2025-11-05T20:17:00Z","2025-11-06T20:31:00Z","2025-11-13T15:23:00Z","2025-11-13T20:30:00Z","2025-11-14T20:14:00Z","2025-11-18T14:45:00Z","2025-11-18T20:16:00Z","2025-11-20T15:50:00Z","2025-11-20T20:30:00Z","2025-11-25T16:23:00Z","2025-12-02T16:08:00Z","2025-12-08T15:10:00Z","2025-12-12T15:02:00Z","2025-12-12T15:52:00Z","2025-12-12T20:16:00Z","2025-12-16T15:10:00Z","2025-12-17T15:34:00Z","2025-12-22T15:03:00Z","2025-12-24T15:32:00Z","2025-12-29T15:43:00Z","2025-12-30T20:25:00Z","2026-01-02T15:07:00Z","2026-01-05T17:00:00Z","2026-01-05T19:16:00Z","2026-01-07T17:10:00Z","2026-01-08T16:38:00Z","2026-01-08T20:18:00Z","2026-01-09T20:21:00Z","2026-01-09T20:31:00Z","2026-01-12T20:12:00Z","2026-01-13T15:09:00Z","2026-01-14T20:08:00Z","2026-01-15T19:09:00Z","2026-01-16T15:24:00Z","2026-01-21T17:13:00Z","2026-01-23T16:07:00Z","2026-01-23T19:34:00Z","2026-01-23T19:40:00Z","2026-01-28T20:30:00Z","2026-01-29T15:31:00Z","2026-01-30T19:35:00Z","2026-02-02T19:29:00Z","2026-02-03T16:26:00Z","2026-02-04T16:35:00Z","2026-02-09T15:30:00Z","2026-02-09T20:17:00Z","2026-02-10T20:02:00Z","2026-02-11T15:04:00Z","2026-02-12T15:33:00Z","2026-02-12T20:02:00Z","2026-02-13T19:50:00Z","2026-02-17T15:50:00Z","2026-02-17T19:54:00Z","2026-02-18T20:33:00Z","2026-02-20T15:42:00Z","2026-02-23T15:37:00Z","2026-02-26T15:04:00Z","2026-02-27T20:03:00Z","2026-03-04T19:40:00Z","2026-03-11T15:00:00Z","2026-03-12T18:16:00Z","2026-03-13T14:32:00Z","2026-03-18T18:17:00Z","2026-03-20T13:49:00Z","2026-03-23T15:30:00Z","2026-03-23T19:41:00Z","2026-03-24T18:20:00Z","2026-03-25T18:38:00Z","2026-04-01T17:41:00Z","2026-04-07T13:43:00Z","2026-04-07T14:58:00Z","2026-04-07T18:27:00Z","2026-04-07T19:44:00Z","2026-04-08T13:36:00Z","2026-04-09T15:30:00Z","2026-04-10T15:28:00Z","2026-04-10T18:56:00Z","2026-04-14T18:03:00Z","2026-04-16T18:01:00Z","2026-04-17T18:01:00Z","2026-04-20T14:38:00Z","2026-04-21T14:53:00Z","2026-04-21T18:56:00Z","2026-04-23T14:47:00Z","2026-05-04T15:02:00Z","2026-05-05T19:44:00Z","2026-05-12T14:22:00Z","2026-05-13T14:45:00Z","2026-05-14T14:32:00Z","2026-05-15T15:42:00Z","2026-05-15T18:23:00Z","2026-05-19T13:59:00Z","2026-05-20T14:47:00Z","2026-05-22T19:01:00Z","2026-05-28T15:49:00Z","2026-06-09T15:16:00Z","2026-06-16T14:17:00Z","2026-06-26T18:06:00Z","2026-06-29T14:24:00Z","2026-06-30T14:44:00Z","2026-07-02T14:16:00Z","2026-07-09T14:57:00Z","2026-07-09T18:19:00Z","2026-07-14T14:29:00Z","2026-07-15T14:17:00Z","2026-07-17T14:47:00Z","2026-07-20T18:28:00Z","2026-07-21T14:21:00Z","2026-07-23T14:40:00Z","2026-07-28T14:38:00Z","2026-07-30T14:46:00Z","2026-07-30T18:36:00Z","2026-08-07T14:59:00Z","2026-08-21T14:46:00Z"];
+// SYNC_MARKER_END
+</script>
+<script>
+function cv(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// ---- Load Chart.js, trying a few mirrors in case one is blocked/unreachable ----
+function loadScript(src){
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve(true);
+    s.onerror = () => reject(new Error('failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+const CHART_JS_MIRRORS = [
+  "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js",
+  "https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js",
+];
+async function loadChartJs(){
+  for(const url of CHART_JS_MIRRORS){
+    try{
+      await loadScript(url);
+      if(typeof Chart !== 'undefined') return true;
+    }catch(e){ /* try next mirror */ }
+  }
+  return false;
+}
+
+// ---- Status line ----
+function updateStatusLine(){
+  const statusLine = document.getElementById('statusLine');
+  if(!DATA_SYNCED_AT){ statusLine.textContent = ''; return; }
+  const synced = new Date(DATA_SYNCED_AT);
+  const ageMin = (Date.now() - synced.getTime()) / 60000;
+  const stale = ageMin > 30;
+  statusLine.className = 'status-line' + (stale ? ' stale' : '');
+  statusLine.textContent = `Last synced ${synced.toLocaleString()}${stale ? ' — sync may be delayed' : ''}`;
+}
+
+// ---- Convert UTC entry timestamps to America/New_York wall-clock minutes-of-day ----
+function toNyMinutesOfDay(isoUtc){
+  const d = new Date(isoUtc);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit'
+  }).formatToParts(d);
+  const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
+  return h * 60 + m;
+}
+
+function buildBuckets(timestamps){
+  const SESSION_START = 9 * 60 + 30;
+  const SESSION_END = 16 * 60;
+  const labels = [];
+  const counts = {};
+  for(let t = SESSION_START; t <= SESSION_END; t += 5){
+    const h = Math.floor(t / 60), m = t % 60;
+    const key = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    labels.push(key);
+    counts[key] = 0;
+  }
+  let inSession = 0;
+  timestamps.forEach(ts => {
+    const minutes = toNyMinutesOfDay(ts);
+    if(minutes < SESSION_START || minutes > SESSION_END) return;
+    const bucketMin = Math.floor(minutes / 5) * 5;
+    const h = Math.floor(bucketMin / 60), m = bucketMin % 60;
+    const key = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    if(key in counts){ counts[key] += 1; inSession += 1; }
+  });
+  return { labels, values: labels.map(l => counts[l]), total: inSession };
+}
+
+// ---- Line chart ----
+let lineChartInstance = null;
+function renderLineChart(labels, values){
+  const mutedC = cv('--muted');
+  const gridC = cv('--grid-line');
+  const blueLine = cv('--blue-600') || '#185FA5';
+
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  if(lineChartInstance) lineChartInstance.destroy();
+  lineChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values, borderColor: blueLine, backgroundColor: 'transparent',
+        borderWidth: 2, pointRadius: 0, tension: 0.35
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display:false }, tooltip: { callbacks: { title: (items) => items[0].label + ' ET', label: (ctx)=> ctx.parsed.y + ' trade' + (ctx.parsed.y===1?'':'s') } } },
+      scales: {
+        x: { ticks: { color:mutedC, font:{size:10}, autoSkip:true, maxTicksLimit: 14, maxRotation:0 }, grid:{ display:false } },
+        y: { beginAtZero:true, ticks: { color:mutedC, font:{size:10}, stepSize:1 }, grid:{ color:gridC } }
+      }
+    }
+  });
+}
+
+// ---- Heatmap ----
+const BLUE_RAMP = ['#E6F1FB','#B5D4F4','#85B7EB','#378ADD','#185FA5','#0C447C','#042C53'];
+function colorForCount(v, max){
+  if(v === 0) return null;
+  const t = v / max;
+  const idx = Math.min(BLUE_RAMP.length - 1, Math.floor(t * (BLUE_RAMP.length - 1)) + 1);
+  return BLUE_RAMP[idx];
+}
+function textColorForCount(v, max){
+  return (v / max) > 0.55 ? '#ffffff' : '#0C447C';
+}
+function toMin(label){
+  const [h, m] = label.split(':').map(Number);
+  return h * 60 + m;
+}
+function renderHeatmap(labels, values){
+  const row = document.getElementById('heatmapRow');
+  const axis = document.getElementById('heatmapAxis');
+  row.innerHTML = '';
+  axis.innerHTML = '';
+
+  const cutStart = toMin('12:00');
+  const cutEnd = toMin('13:30');
+  const pairs = labels.map((label, i) => [label, values[i]])
+    .filter(([label]) => { const t = toMin(label); return t < cutStart || t > cutEnd; });
+
+  const max = Math.max(...pairs.map(p => p[1]), 1);
+  let prevSegment = null;
+
+  pairs.forEach(([label, count]) => {
+    const t = toMin(label);
+    const segment = t < cutStart ? 'am' : 'pm';
+    if(prevSegment && segment !== prevSegment){
+      const gap = document.createElement('div');
+      gap.className = 'heatmap-gap';
+      row.appendChild(gap);
+      const gapTick = document.createElement('div');
+      gapTick.className = 'heatmap-gap';
+      axis.appendChild(gapTick);
+    }
+    prevSegment = segment;
+
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    const bg = colorForCount(count, max);
+    cell.style.background = bg || 'var(--cell-empty)';
+    cell.style.color = bg ? textColorForCount(count, max) : 'var(--muted)';
+    cell.title = label + ' ET: ' + count + ' trade' + (count===1?'':'s');
+    if(count > 0) cell.textContent = count;
+    row.appendChild(cell);
+
+    const tick = document.createElement('div');
+    tick.className = 'heatmap-tick';
+    if(label.endsWith(':00') || label.endsWith(':30')) tick.textContent = label;
+    axis.appendChild(tick);
+  });
+}
+
+function renderAll(){
+  if(typeof Chart === 'undefined'){
+    document.getElementById('lineChart').parentElement.innerHTML =
+      '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);text-align:center;padding:0 12px;">Charts library couldn\'t load (network/ad-blocker may be blocking it).</div>';
+    return;
+  }
+  const { labels, values, total } = buildBuckets(ENTRY_TIMESTAMPS_UTC);
+  document.getElementById('tradeCountLabel').textContent = total;
+  renderLineChart(labels, values);
+  renderHeatmap(labels, values);
+}
+
+// ---- Theme toggle ----
+function applyThemeButtonIcon(){
+  const theme = document.documentElement.getAttribute('data-theme');
+  const icon = document.getElementById('themeIcon');
+  icon.innerHTML = theme === 'dark'
+    ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+applyThemeButtonIcon();
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('mmtrades-theme', next); }catch(e){ /* storage may be blocked */ }
+  applyThemeButtonIcon();
+  if(typeof Chart !== 'undefined') renderAll();
+});
+
+// ---- Sync button: re-fetches this page's own HTML and pulls the freshest
+// timestamps out of the SYNC_MARKER block, same pattern as the other dashboards ----
+const syncBtn = document.getElementById('syncBtn');
+const syncIcon = document.getElementById('syncIcon');
+async function refetchSyncedData(){
+  const url = window.location.pathname + '?t=' + Date.now();
+  const res = await fetch(url, { cache: 'no-store' });
+  if(!res.ok) throw new Error('Fetch failed: ' + res.status);
+  const html = await res.text();
+  const m = html.match(/\/\/ SYNC_MARKER_START([\s\S]*?)\/\/ SYNC_MARKER_END/);
+  if(!m) throw new Error('SYNC_MARKER block not found');
+  const block = m[1];
+  const syncedAtMatch = block.match(/const DATA_SYNCED_AT = "([^"]*)"/);
+  const tsMatch = block.match(/const ENTRY_TIMESTAMPS_UTC = (\[[\s\S]*?\]);/);
+  if(syncedAtMatch) window.DATA_SYNCED_AT_LIVE = syncedAtMatch[1];
+  if(tsMatch) window.TIMESTAMPS_LIVE = JSON.parse(tsMatch[1]);
+}
+async function runSync(){
+  syncBtn.disabled = true;
+  syncIcon.classList.add('spin');
+  syncBtn.title = 'Syncing…';
+  try{
+    await refetchSyncedData();
+    if(window.TIMESTAMPS_LIVE){
+      ENTRY_TIMESTAMPS_UTC.length = 0;
+      ENTRY_TIMESTAMPS_UTC.push(...window.TIMESTAMPS_LIVE);
+    }
+    renderAll();
+    updateStatusLine();
+    syncBtn.title = 'Synced';
+  }catch(err){
+    console.error(err);
+    syncBtn.title = 'Sync failed — click to retry';
+  }finally{
+    syncIcon.classList.remove('spin');
+    syncBtn.disabled = false;
+    setTimeout(() => { syncBtn.title = 'Refresh with the latest synced data'; }, 2000);
+  }
+}
+syncBtn.addEventListener('click', runSync);
+
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+setInterval(() => {
+  if(document.visibilityState === 'visible') runSync();
+}, AUTO_REFRESH_MS);
+
+updateStatusLine();
+loadChartJs().then(renderAll);
+</script>
+</body>
+</html>
