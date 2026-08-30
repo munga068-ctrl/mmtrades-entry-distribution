@@ -25,15 +25,18 @@ jobs:
           node-version: "20"
 
       - name: Run sync script
+        id: sync
+        continue-on-error: true
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: node sync.js
 
       - name: Commit and push (retries if main moved since checkout)
+        if: always()
         run: |
           git config user.name "notion-sync-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add index.html
+          git add index.html .sync-debug.json 2>/dev/null || git add index.html
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
@@ -44,7 +47,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             if git push; then
               echo "Pushed successfully."
-              exit 0
+              break
             fi
             echo "Push rejected (attempt $attempt) — main moved since checkout. Rebasing and retrying..."
             git fetch origin main
@@ -52,5 +55,8 @@ jobs:
             sleep $((attempt * 3))
           done
 
-          echo "Failed to push after 5 attempts."
+      - name: Fail job if sync script failed
+        if: steps.sync.outcome == 'failure'
+        run: |
+          echo "Sync script failed — see .sync-debug.json in the repo for details."
           exit 1
