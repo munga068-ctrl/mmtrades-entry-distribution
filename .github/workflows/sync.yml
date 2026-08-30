@@ -1,0 +1,56 @@
+name: Sync Notion entry times
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes (UTC) — the fastest interval GitHub Actions cron supports
+  workflow_dispatch: {}     # lets you trigger it manually from the Actions tab too
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-notion-entry-times
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run sync script
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: node sync.js
+
+      - name: Commit and push (retries if main moved since checkout)
+        run: |
+          git config user.name "notion-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Auto-sync entry times from Notion"
+
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "Pushed successfully."
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) — main moved since checkout. Rebasing and retrying..."
+            git fetch origin main
+            git rebase origin/main
+            sleep $((attempt * 3))
+          done
+
+          echo "Failed to push after 5 attempts."
+          exit 1
