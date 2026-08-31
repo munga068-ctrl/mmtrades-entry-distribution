@@ -1,5 +1,7 @@
-// Pulls fresh entry timestamps from the Notion BACKTESTING data source and
-// rewrites the ENTRY_TIMESTAMPS_UTC snapshot embedded in index.html.
+// Pulls fresh entry timestamps from two Notion data sources and rewrites the
+// snapshots embedded in index.html:
+//   - BACKTESTING       -> ENTRY_TIMESTAMPS_UTC       (real UTC, converted to ET client-side)
+//   - PHASE 1 JOURNAL   -> PHASE1_ENTRY_TIMESTAMPS    (floating datetime, already NY wall-clock)
 // Run by .github/workflows/sync.yml on a schedule.
 const fs = require("fs");
 
@@ -9,8 +11,8 @@ if (!NOTION_TOKEN) {
   process.exit(1);
 }
 
-// BACKTESTING data source (collection) ID.
-const DATA_SOURCE_ID = "207f7bb7-7d6d-80d7-b4f0-000bec43a2e3";
+const BACKTESTING_DATA_SOURCE_ID = "207f7bb7-7d6d-80d7-b4f0-000bec43a2e3";
+const PHASE1_DATA_SOURCE_ID = "2c1f7bb7-7d6d-812c-b034-000bef8295e6";
 const HTML_PATH = "index.html";
 
 const HEADERS_BASE = {
@@ -18,7 +20,12 @@ const HEADERS_BASE = {
   "Content-Type": "application/json",
 };
 
-const DEBUG_LOG = { attempts: [], tokenPresent: !!NOTION_TOKEN, tokenLength: NOTION_TOKEN ? NOTION_TOKEN.length : 0 };
+const DEBUG_LOG = {
+  tokenPresent: !!NOTION_TOKEN,
+  tokenLength: NOTION_TOKEN ? NOTION_TOKEN.length : 0,
+  backtesting: { attempts: [] },
+  phase1: { attempts: [] },
+};
 
 function writeDebugLog() {
   try {
@@ -26,29 +33,29 @@ function writeDebugLog() {
   } catch (e) { /* best effort */ }
 }
 
-async function queryAllPages() {
+async function queryAllPages(dataSourceId, dateProperty, debugBucket) {
   const attempts = [
-    { url: `https://api.notion.com/v1/data_sources/${DATA_SOURCE_ID}/query`, notionVersion: "2025-09-03" },
-    { url: `https://api.notion.com/v1/databases/${DATA_SOURCE_ID}/query`, notionVersion: "2022-06-28" },
+    { url: `https://api.notion.com/v1/data_sources/${dataSourceId}/query`, notionVersion: "2025-09-03" },
+    { url: `https://api.notion.com/v1/databases/${dataSourceId}/query`, notionVersion: "2022-06-28" },
   ];
 
   let lastError = null;
   for (const attempt of attempts) {
     try {
-      const rows = await paginateQuery(attempt.url, attempt.notionVersion);
+      const rows = await paginateQuery(attempt.url, attempt.notionVersion, dateProperty);
       console.log(`Fetched ${rows.length} rows via ${attempt.url}`);
-      DEBUG_LOG.attempts.push({ url: attempt.url, ok: true, rows: rows.length });
+      debugBucket.attempts.push({ url: attempt.url, ok: true, rows: rows.length });
       return rows;
     } catch (err) {
       console.warn(`Attempt against ${attempt.url} failed: ${err.message}`);
-      DEBUG_LOG.attempts.push({ url: attempt.url, ok: false, error: err.message });
+      debugBucket.attempts.push({ url: attempt.url, ok: false, error: err.message });
       lastError = err;
     }
   }
   throw lastError || new Error("All Notion query attempts failed");
 }
 
-async function paginateQuery(url, notionVersion) {
+async function paginateQuery(url, notionVersion, dateProperty) {
   const headers = { ...HEADERS_BASE, "Notion-Version": notionVersion };
   let results = [];
   let cursor = undefined;
@@ -56,7 +63,7 @@ async function paginateQuery(url, notionVersion) {
   do {
     const body = {
       page_size: 100,
-      filter: { property: "Date", date: { is_not_empty: true } },
+      filter: { property: dateProperty, date: { is_not_empty: true } },
     };
     if (cursor) body.start_cursor = cursor;
 
@@ -73,10 +80,10 @@ async function paginateQuery(url, notionVersion) {
   return results;
 }
 
-function extractTimestamps(pages) {
+function extractTimestamps(pages, dateProperty) {
   const timestamps = [];
   for (const page of pages) {
-    const dateProp = page.properties?.["Date"]?.date;
+    const dateProp = page.properties?.[dateProperty]?.date;
     if (!dateProp || !dateProp.start) continue;
     // Only keep entries that actually carry a time component — date-only
     // rows have no meaningful entry time for this chart.
@@ -87,16 +94,18 @@ function extractTimestamps(pages) {
   return timestamps;
 }
 
-function updateHtml(timestamps) {
+function updateHtml(backtestingTimestamps, phase1Timestamps) {
   const html = fs.readFileSync(HTML_PATH, "utf8");
   const syncedAt = new Date().toISOString();
 
-  const tsLiteral = JSON.stringify(timestamps);
+  const btLiteral = JSON.stringify(backtestingTimestamps);
+  const p1Literal = JSON.stringify(phase1Timestamps);
   const newBlock =
 `// SYNC_MARKER_START
 // Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
 const DATA_SYNCED_AT = "${syncedAt}";
-const ENTRY_TIMESTAMPS_UTC = ${tsLiteral};
+const ENTRY_TIMESTAMPS_UTC = ${btLiteral};
+const PHASE1_ENTRY_TIMESTAMPS = ${p1Literal};
 // SYNC_MARKER_END`;
 
   const re = /\/\/ SYNC_MARKER_START[\s\S]*?\/\/ SYNC_MARKER_END/;
@@ -105,18 +114,39 @@ const ENTRY_TIMESTAMPS_UTC = ${tsLiteral};
   }
   const updated = html.replace(re, newBlock);
   fs.writeFileSync(HTML_PATH, updated, "utf8");
-  console.log(`Wrote ${timestamps.length} entry timestamps into ${HTML_PATH} (synced at ${syncedAt}).`);
+  console.log(`Wrote ${backtestingTimestamps.length} Backtesting + ${phase1Timestamps.length} Phase 1 Journal timestamps into ${HTML_PATH} (synced at ${syncedAt}).`);
 }
 
 (async () => {
+  let backtestingTimestamps = [];
+  let phase1Timestamps = [];
+  let hadError = false;
+
   try {
-    const pages = await queryAllPages();
-    const timestamps = extractTimestamps(pages);
-    updateHtml(timestamps);
-    writeDebugLog();
+    const pages = await queryAllPages(BACKTESTING_DATA_SOURCE_ID, "Date", DEBUG_LOG.backtesting);
+    backtestingTimestamps = extractTimestamps(pages, "Date");
   } catch (err) {
-    console.error("Sync failed:", err);
-    writeDebugLog();
-    process.exit(1);
+    console.error("Backtesting sync failed:", err);
+    DEBUG_LOG.backtesting.error = err.message;
+    hadError = true;
   }
+
+  try {
+    const pages = await queryAllPages(PHASE1_DATA_SOURCE_ID, "ENTRY TIME ", DEBUG_LOG.phase1);
+    phase1Timestamps = extractTimestamps(pages, "ENTRY TIME ");
+  } catch (err) {
+    console.error("Phase 1 Journal sync failed:", err);
+    DEBUG_LOG.phase1.error = err.message;
+    hadError = true;
+  }
+
+  try {
+    updateHtml(backtestingTimestamps, phase1Timestamps);
+  } catch (err) {
+    console.error("Failed to write index.html:", err);
+    hadError = true;
+  }
+
+  writeDebugLog();
+  if (hadError) process.exit(1);
 })();
