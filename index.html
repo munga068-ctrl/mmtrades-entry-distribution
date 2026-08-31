@@ -75,6 +75,9 @@
   .status-line{ font-size:12px; color:var(--synced-c); margin-bottom:22px; }
   .status-line.stale{ color:var(--stale-c); }
   .subtitle{ font-size:13px; color:var(--muted); margin:-2px 0 22px; }
+  .section-label{ font-size:14px; font-weight:700; margin:28px 0 14px; display:flex; align-items:baseline; gap:8px; }
+  .section-label:first-of-type{ margin-top:6px; }
+  .section-count{ font-size:12px; font-weight:500; color:var(--muted); }
   .chart-card{
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
     padding:16px 18px 16px; margin-bottom:20px;
@@ -114,7 +117,9 @@
     </div>
   </div>
   <div class="status-line" id="statusLine">&nbsp;</div>
-  <p class="subtitle">Backtesting database &middot; 9:30 AM&ndash;4:00 PM ET &middot; 5-minute buckets &middot; <span id="tradeCountLabel"></span> trades</p>
+  <p class="subtitle">9:30 AM&ndash;4:00 PM ET &middot; 5-minute buckets</p>
+
+  <h2 class="section-label">Backtesting Database <span class="section-count" id="tradeCountLabel"></span></h2>
 
   <div class="chart-card">
     <h3>Entry Time Distribution — Full Trading Day</h3>
@@ -142,13 +147,42 @@
     </div>
   </div>
 
-  <footer>Synced from Notion (BACKTESTING database) &middot; entry times converted from UTC to America/New_York</footer>
+  <h2 class="section-label">Phase 1 Journal <span class="section-count" id="tradeCountLabel2"></span></h2>
+
+  <div class="chart-card">
+    <h3>Entry Time Distribution — Full Trading Day</h3>
+    <p class="caption">Number of trades by entry time (ET)</p>
+    <div class="chart-body"><canvas id="lineChart2"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Entry Time Heatmap</h3>
+    <p class="caption">Same 5-minute buckets, colored by trade count &middot; 12:00&ndash;1:30 PM lunch window trimmed for visibility</p>
+    <div class="heatmap-scroll">
+      <div class="heatmap-row" id="heatmapRow2"></div>
+      <div class="heatmap-axis" id="heatmapAxis2"></div>
+    </div>
+    <div class="legend">
+      <span>Fewer</span>
+      <span class="swatch" style="background:var(--blue-50)"></span>
+      <span class="swatch" style="background:var(--blue-100)"></span>
+      <span class="swatch" style="background:var(--blue-200)"></span>
+      <span class="swatch" style="background:var(--blue-400)"></span>
+      <span class="swatch" style="background:var(--blue-600)"></span>
+      <span class="swatch" style="background:var(--blue-800)"></span>
+      <span class="swatch" style="background:var(--blue-900)"></span>
+      <span>More</span>
+    </div>
+  </div>
+
+  <footer>Synced from Notion (BACKTESTING &amp; PHASE 1 JOURNAL databases) &middot; Backtesting times converted from UTC to America/New_York &middot; Phase 1 Journal times are recorded directly in New York time</footer>
 
 <script>
 // SYNC_MARKER_START
 // Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
 const DATA_SYNCED_AT = "2026-08-31T00:25:05.069Z";
 const ENTRY_TIMESTAMPS_UTC = ["2025-09-02T10:35:00.000-04:00","2025-09-05T10:10:00.000-04:00","2025-10-06T11:03:00.000-04:00","2025-10-06T15:15:00.000-04:00","2025-10-07T10:50:00.000-04:00","2025-10-08T10:01:00.000-04:00","2025-10-14T10:10:00.000-04:00","2025-10-14T15:30:00.000-04:00","2025-10-16T11:34:00.000-04:00","2025-10-23T11:50:00.000-04:00","2025-10-24T11:11:00.000-04:00","2025-10-24T15:30:00.000-04:00","2025-10-28T11:45:00.000-04:00","2025-10-28T15:45:00.000-04:00","2025-10-29T10:45:00.000-04:00","2025-10-29T15:47:00.000-04:00","2025-10-30T15:05:00.000-04:00","2025-10-31T11:50:00.000-04:00","2025-11-03T10:18:00.000-05:00","2025-11-03T13:47:00.000-05:00","2025-11-03T15:15:00.000-05:00","2025-11-04T11:04:00.000-05:00","2025-11-04T14:30:00.000-05:00","2025-11-05T15:17:00.000-05:00","2025-11-06T15:31:00.000-05:00","2025-11-13T10:23:00.000-05:00","2025-11-13T15:30:00.000-05:00","2025-11-14T15:14:00.000-05:00","2025-11-18T09:45:00.000-05:00","2025-11-18T15:16:00.000-05:00","2025-11-20T10:50:00.000-05:00","2025-11-20T15:30:00.000-05:00","2025-11-25T11:23:00.000-05:00","2025-12-02T11:08:00.000-05:00","2025-12-08T10:10:00.000-05:00","2025-12-12T10:02:00.000-05:00","2025-12-12T10:52:00.000-05:00","2025-12-12T15:16:00.000-05:00","2025-12-16T10:10:00.000-05:00","2025-12-17T10:34:00.000-05:00","2025-12-22T10:03:00.000-05:00","2025-12-24T10:32:00.000-05:00","2025-12-29T10:43:00.000-05:00","2025-12-30T15:25:00.000-05:00","2026-01-02T10:07:00.000-05:00","2026-01-05T12:00:00.000-05:00","2026-01-05T14:16:00.000-05:00","2026-01-07T12:10:00.000-05:00","2026-01-08T11:38:00.000-05:00","2026-01-08T15:18:00.000-05:00","2026-01-09T15:21:00.000-05:00","2026-01-09T15:31:00.000-05:00","2026-01-12T15:12:00.000-05:00","2026-01-13T10:09:00.000-05:00","2026-01-14T15:08:00.000-05:00","2026-01-15T14:09:00.000-05:00","2026-01-16T10:24:00.000-05:00","2026-01-21T12:13:00.000-05:00","2026-01-23T11:07:00.000-05:00","2026-01-23T14:34:00.000-05:00","2026-01-23T14:40:00.000-05:00","2026-01-28T15:30:00.000-05:00","2026-01-29T10:31:00.000-05:00","2026-01-30T14:35:00.000-05:00","2026-02-02T14:29:00.000-05:00","2026-02-03T11:26:00.000-05:00","2026-02-04T11:35:00.000-05:00","2026-02-09T10:30:00.000-05:00","2026-02-09T15:17:00.000-05:00","2026-02-10T15:02:00.000-05:00","2026-02-11T10:04:00.000-05:00","2026-02-12T10:33:00.000-05:00","2026-02-12T15:02:00.000-05:00","2026-02-13T14:50:00.000-05:00","2026-02-17T10:50:00.000-05:00","2026-02-17T14:54:00.000-05:00","2026-02-18T15:33:00.000-05:00","2026-02-20T10:42:00.000-05:00","2026-02-23T10:37:00.000-05:00","2026-02-26T10:04:00.000-05:00","2026-02-27T15:03:00.000-05:00","2026-03-04T14:40:00.000-05:00","2026-03-11T11:00:00.000-04:00","2026-03-12T14:16:00.000-04:00","2026-03-13T10:32:00.000-04:00","2026-03-18T14:17:00.000-04:00","2026-03-20T09:49:00.000-04:00","2026-03-23T11:30:00.000-04:00","2026-03-23T15:41:00.000-04:00","2026-03-24T14:20:00.000-04:00","2026-03-25T14:38:00.000-04:00","2026-04-01T13:41:00.000-04:00","2026-04-07T09:43:00.000-04:00","2026-04-07T10:58:00.000-04:00","2026-04-07T14:27:00.000-04:00","2026-04-07T15:44:00.000-04:00","2026-04-08T09:36:00.000-04:00","2026-04-09T11:30:00.000-04:00","2026-04-10T11:28:00.000-04:00","2026-04-10T14:56:00.000-04:00","2026-04-14T14:03:00.000-04:00","2026-04-16T14:01:00.000-04:00","2026-04-17T14:01:00.000-04:00","2026-04-20T10:38:00.000-04:00","2026-04-21T10:53:00.000-04:00","2026-04-21T14:56:00.000-04:00","2026-04-23T10:47:00.000-04:00","2026-05-04T11:02:00.000-04:00","2026-05-05T15:44:00.000-04:00","2026-05-12T10:22:00.000-04:00","2026-05-13T10:45:00.000-04:00","2026-05-14T10:32:00.000-04:00","2026-05-15T11:42:00.000-04:00","2026-05-15T14:23:00.000-04:00","2026-05-19T09:59:00.000-04:00","2026-05-20T10:47:00.000-04:00","2026-05-22T15:01:00.000-04:00","2026-05-28T11:49:00.000-04:00","2026-06-09T11:16:00.000-04:00","2026-06-16T10:17:00.000-04:00","2026-06-26T14:06:00.000-04:00","2026-06-29T10:24:00.000-04:00","2026-06-30T10:44:00.000-04:00","2026-07-02T10:16:00.000-04:00","2026-07-09T10:57:00.000-04:00","2026-07-09T14:19:00.000-04:00","2026-07-14T10:29:00.000-04:00","2026-07-15T10:17:00.000-04:00","2026-07-17T10:47:00.000-04:00","2026-07-20T14:28:00.000-04:00","2026-07-21T10:21:00.000-04:00","2026-07-23T10:40:00.000-04:00","2026-07-28T10:38:00.000-04:00","2026-07-30T10:46:00.000-04:00","2026-07-30T14:36:00.000-04:00","2026-08-07T10:59:00.000-04:00","2026-08-21T10:46:00.000-04:00"];
+const PHASE1_ENTRY_TIMESTAMPS = ["2026-01-05T20:03:00Z","2026-01-06T15:49:00Z","2026-01-07T15:08:00Z","2026-01-07T15:42:00Z","2026-01-09T14:51:00Z","2026-01-09T15:11:00Z","2026-01-12T20:11:00Z","2026-01-13T15:04:00Z","2026-01-13T19:49:00Z","2026-01-13T20:06:00Z","2026-02-06T19:18:00Z","2026-02-06T19:41:00Z","2026-02-10T19:15:00Z","2026-02-11T19:42:00Z","2026-02-13T19:50:00Z","2026-02-19T15:23:00Z","2026-02-19T19:48:00Z","2026-02-23T19:20:00Z","2026-02-24T19:13:00Z","2026-02-24T19:56:00Z","2026-02-26T20:03:00Z","2026-02-27T16:11:00Z","2026-02-27T19:55:00Z","2026-03-09T18:14:00Z","2026-03-10T18:01:00Z","2026-03-19T18:27:00Z","2026-03-23T18:18:00Z","2026-04-09T18:00:00Z","2026-04-10T18:16:00Z","2026-04-22T18:44:00Z","2026-04-29T18:33:00Z","2026-05-04T18:49:00Z","2026-05-15T15:01:00Z","2026-05-21T18:45:00Z","2026-05-28T18:41:00Z","2026-07-09T14:41:00Z","2026-07-16T14:43:00Z","2026-07-17T14:50:00Z","2026-07-22T14:25:00Z","2026-07-23T14:41:00Z"];
 // SYNC_MARKER_END
 </script>
 <script>
@@ -203,7 +237,16 @@ function toNyMinutesOfDay(isoUtc){
   return h * 60 + m;
 }
 
-function buildBuckets(timestamps){
+// ---- For timestamps that are already recorded in New York time (floating,
+// no real timezone attached in Notion) — read the hour:minute directly,
+// ignoring any trailing Z/offset, since that suffix carries no meaning here ----
+function toLiteralMinutesOfDay(isoLike){
+  const m = isoLike.match(/T(\d{2}):(\d{2})/);
+  if(!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+function buildBuckets(timestamps, minutesFn){
   const SESSION_START = 9 * 60 + 30;
   const SESSION_END = 16 * 60;
   const labels = [];
@@ -216,8 +259,8 @@ function buildBuckets(timestamps){
   }
   let inSession = 0;
   timestamps.forEach(ts => {
-    const minutes = toNyMinutesOfDay(ts);
-    if(minutes < SESSION_START || minutes > SESSION_END) return;
+    const minutes = minutesFn(ts);
+    if(minutes === null || minutes < SESSION_START || minutes > SESSION_END) return;
     const bucketMin = Math.floor(minutes / 5) * 5;
     const h = Math.floor(bucketMin / 60), m = bucketMin % 60;
     const key = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
@@ -227,15 +270,15 @@ function buildBuckets(timestamps){
 }
 
 // ---- Line chart ----
-let lineChartInstance = null;
-function renderLineChart(labels, values){
+const lineChartInstances = {};
+function renderLineChart(canvasId, labels, values){
   const mutedC = cv('--muted');
   const gridC = cv('--grid-line');
   const blueLine = cv('--blue-600') || '#185FA5';
 
-  const ctx = document.getElementById('lineChart').getContext('2d');
-  if(lineChartInstance) lineChartInstance.destroy();
-  lineChartInstance = new Chart(ctx, {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(lineChartInstances[canvasId]) lineChartInstances[canvasId].destroy();
+  lineChartInstances[canvasId] = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
@@ -270,9 +313,9 @@ function toMin(label){
   const [h, m] = label.split(':').map(Number);
   return h * 60 + m;
 }
-function renderHeatmap(labels, values){
-  const row = document.getElementById('heatmapRow');
-  const axis = document.getElementById('heatmapAxis');
+function renderHeatmap(rowId, axisId, labels, values){
+  const row = document.getElementById(rowId);
+  const axis = document.getElementById(axisId);
   row.innerHTML = '';
   axis.innerHTML = '';
 
@@ -315,14 +358,23 @@ function renderHeatmap(labels, values){
 
 function renderAll(){
   if(typeof Chart === 'undefined'){
-    document.getElementById('lineChart').parentElement.innerHTML =
-      '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);text-align:center;padding:0 12px;">Charts library couldn\'t load (network/ad-blocker may be blocking it).</div>';
+    ['lineChart', 'lineChart2'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.parentElement.innerHTML =
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);text-align:center;padding:0 12px;">Charts library couldn\'t load (network/ad-blocker may be blocking it).</div>';
+    });
     return;
   }
-  const { labels, values, total } = buildBuckets(ENTRY_TIMESTAMPS_UTC);
-  document.getElementById('tradeCountLabel').textContent = total;
-  renderLineChart(labels, values);
-  renderHeatmap(labels, values);
+
+  const bt = buildBuckets(ENTRY_TIMESTAMPS_UTC, toNyMinutesOfDay);
+  document.getElementById('tradeCountLabel').textContent = bt.total + ' trades';
+  renderLineChart('lineChart', bt.labels, bt.values);
+  renderHeatmap('heatmapRow', 'heatmapAxis', bt.labels, bt.values);
+
+  const p1 = buildBuckets(PHASE1_ENTRY_TIMESTAMPS, toLiteralMinutesOfDay);
+  document.getElementById('tradeCountLabel2').textContent = p1.total + ' trades';
+  renderLineChart('lineChart2', p1.labels, p1.values);
+  renderHeatmap('heatmapRow2', 'heatmapAxis2', p1.labels, p1.values);
 }
 
 // ---- Theme toggle ----
@@ -357,8 +409,10 @@ async function refetchSyncedData(){
   const block = m[1];
   const syncedAtMatch = block.match(/const DATA_SYNCED_AT = "([^"]*)"/);
   const tsMatch = block.match(/const ENTRY_TIMESTAMPS_UTC = (\[[\s\S]*?\]);/);
+  const p1Match = block.match(/const PHASE1_ENTRY_TIMESTAMPS = (\[[\s\S]*?\]);/);
   if(syncedAtMatch) window.DATA_SYNCED_AT_LIVE = syncedAtMatch[1];
   if(tsMatch) window.TIMESTAMPS_LIVE = JSON.parse(tsMatch[1]);
+  if(p1Match) window.PHASE1_TIMESTAMPS_LIVE = JSON.parse(p1Match[1]);
 }
 async function runSync(){
   syncBtn.disabled = true;
@@ -369,6 +423,10 @@ async function runSync(){
     if(window.TIMESTAMPS_LIVE){
       ENTRY_TIMESTAMPS_UTC.length = 0;
       ENTRY_TIMESTAMPS_UTC.push(...window.TIMESTAMPS_LIVE);
+    }
+    if(window.PHASE1_TIMESTAMPS_LIVE){
+      PHASE1_ENTRY_TIMESTAMPS.length = 0;
+      PHASE1_ENTRY_TIMESTAMPS.push(...window.PHASE1_TIMESTAMPS_LIVE);
     }
     renderAll();
     updateStatusLine();
