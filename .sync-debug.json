@@ -14,15 +14,9 @@
     "attempts": [
       {
         "url": "https://api.notion.com/v1/data_sources/2c1f7bb7-7d6d-812c-b034-000bef8295e6/query",
-        "ok": false,
-        "error": "HTTP 404: {\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"Could not find data_source with ID: 2c1f7bb7-7d6d-812c-b034-000bef8295e6. Make sure the relevant pages and databases are shared with your integration \\\"MMTrades Sync\\\".\",\"additional_data\":{\"integration_id\":\"3a0f7bb7-7d6d-8199-bd04-0"
-      },
-      {
-        "url": "https://api.notion.com/v1/databases/2c1f7bb7-7d6d-812c-b034-000bef8295e6/query",
-        "ok": false,
-        "error": "HTTP 404: {\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"Could not find database with ID: 2c1f7bb7-7d6d-812c-b034-000bef8295e6. Make sure the relevant pages and databases are shared with your integration \\\"MMTrades Sync\\\".\",\"additional_data\":{\"integration_id\":\"3a0f7bb7-7d6d-8199-bd04-0027"
+        "ok": true,
+        "rows": 40
       }
-    ],
-    "error": "HTTP 404: {\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"Could not find database with ID: 2c1f7bb7-7d6d-812c-b034-000bef8295e6. Make sure the relevant pages and databases are shared with your integration \\\"MMTrades Sync\\\".\",\"additional_data\":{\"integration_id\":\"3a0f7bb7-7d6d-8199-bd04-0027"
+    ]
   }
 }
