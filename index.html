@@ -282,8 +282,9 @@ function renderLineChart(canvasId, labels, series){
     data: s.values,
     borderColor: s.color,
     backgroundColor: 'transparent',
-    borderWidth: s.dashed ? 2 : 2.5,
-    borderDash: s.dashed ? [6, 4] : undefined,
+    borderWidth: s.dotted ? 2.5 : 2.5,
+    borderDash: s.dotted ? [1, 5] : undefined,
+    borderCapStyle: s.dotted ? 'round' : 'butt',
     pointRadius: 0,
     tension: 0.35
   }));
@@ -382,7 +383,7 @@ function renderAll(){
   const bt = buildBuckets(ENTRY_TIMESTAMPS_UTC, toNyMinutesOfDay);
   document.getElementById('tradeCountLabel').textContent = bt.total + ' trades';
   renderLineChart('lineChart', bt.labels, [
-    { values: bt.values, color: blueLine, dashed: false, label: 'All trades' }
+    { values: bt.values, color: blueLine, dotted: false, label: 'All trades' }
   ]);
   renderHeatmap('heatmapRow', 'heatmapAxis', bt.labels, bt.values);
 
@@ -391,9 +392,9 @@ function renderAll(){
   const p1Losses = buildBuckets(PHASE1_ENTRY_TIMESTAMPS, toLiteralMinutesOfDay, PHASE1_ENTRY_OUTCOMES, 'LOSS');
   document.getElementById('tradeCountLabel2').textContent = p1.total + ' trades';
   renderLineChart('lineChart2', p1.labels, [
-    { values: p1.values, color: blueLine, dashed: false, label: 'All trades' },
-    { values: p1Wins.values, color: greenLine, dashed: true, label: 'Wins' },
-    { values: p1Losses.values, color: redLine, dashed: true, label: 'Losses' }
+    { values: p1.values, color: blueLine, dotted: false, label: 'All trades' },
+    { values: p1Wins.values, color: greenLine, dotted: true, label: 'Wins' },
+    { values: p1Losses.values, color: redLine, dotted: true, label: 'Losses' }
   ]);
   renderHeatmap('heatmapRow2', 'heatmapAxis2', p1.labels, p1.values);
 }
