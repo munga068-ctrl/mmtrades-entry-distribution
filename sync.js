@@ -94,18 +94,36 @@ function extractTimestamps(pages, dateProperty) {
   return timestamps;
 }
 
-function updateHtml(backtestingTimestamps, phase1Timestamps) {
+// Same as extractTimestamps, but also pulls a select property (e.g. Outcome)
+// and keeps it paired with its timestamp through the sort, so the two
+// parallel arrays written to index.html stay aligned by index.
+function extractTimestampsWithOutcome(pages, dateProperty, outcomeProperty) {
+  const rows = [];
+  for (const page of pages) {
+    const dateProp = page.properties?.[dateProperty]?.date;
+    if (!dateProp || !dateProp.start) continue;
+    if (!dateProp.start.includes("T")) continue;
+    const outcome = page.properties?.[outcomeProperty]?.select?.name || null;
+    rows.push({ ts: dateProp.start, outcome });
+  }
+  rows.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+  return { timestamps: rows.map(r => r.ts), outcomes: rows.map(r => r.outcome) };
+}
+
+function updateHtml(backtestingTimestamps, phase1Timestamps, phase1Outcomes) {
   const html = fs.readFileSync(HTML_PATH, "utf8");
   const syncedAt = new Date().toISOString();
 
   const btLiteral = JSON.stringify(backtestingTimestamps);
   const p1Literal = JSON.stringify(phase1Timestamps);
+  const p1OutcomeLiteral = JSON.stringify(phase1Outcomes);
   const newBlock =
 `// SYNC_MARKER_START
 // Auto-updated by .github/workflows/sync.yml — do not hand-edit between the markers.
 const DATA_SYNCED_AT = "${syncedAt}";
 const ENTRY_TIMESTAMPS_UTC = ${btLiteral};
 const PHASE1_ENTRY_TIMESTAMPS = ${p1Literal};
+const PHASE1_ENTRY_OUTCOMES = ${p1OutcomeLiteral};
 // SYNC_MARKER_END`;
 
   const re = /\/\/ SYNC_MARKER_START[\s\S]*?\/\/ SYNC_MARKER_END/;
@@ -120,6 +138,7 @@ const PHASE1_ENTRY_TIMESTAMPS = ${p1Literal};
 (async () => {
   let backtestingTimestamps = [];
   let phase1Timestamps = [];
+  let phase1Outcomes = [];
   let hadError = false;
 
   try {
@@ -133,7 +152,9 @@ const PHASE1_ENTRY_TIMESTAMPS = ${p1Literal};
 
   try {
     const pages = await queryAllPages(PHASE1_DATA_SOURCE_ID, "ENTRY TIME ", DEBUG_LOG.phase1);
-    phase1Timestamps = extractTimestamps(pages, "ENTRY TIME ");
+    const extracted = extractTimestampsWithOutcome(pages, "ENTRY TIME ", "Outcome");
+    phase1Timestamps = extracted.timestamps;
+    phase1Outcomes = extracted.outcomes;
   } catch (err) {
     console.error("Phase 1 Journal sync failed:", err);
     DEBUG_LOG.phase1.error = err.message;
@@ -141,7 +162,7 @@ const PHASE1_ENTRY_TIMESTAMPS = ${p1Literal};
   }
 
   try {
-    updateHtml(backtestingTimestamps, phase1Timestamps);
+    updateHtml(backtestingTimestamps, phase1Timestamps, phase1Outcomes);
   } catch (err) {
     console.error("Failed to write index.html:", err);
     hadError = true;
