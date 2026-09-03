@@ -277,17 +277,31 @@ function renderLineChart(canvasId, labels, series){
   const mutedC = cv('--muted');
   const gridC = cv('--grid-line');
 
-  const datasets = series.map(s => ({
-    label: s.label,
-    data: s.values,
-    borderColor: s.color,
-    backgroundColor: 'transparent',
-    borderWidth: s.dotted ? 2.5 : 2.5,
-    borderDash: s.dotted ? [1, 5] : undefined,
-    borderCapStyle: s.dotted ? 'round' : 'butt',
-    pointRadius: 0,
-    tension: 0.35
-  }));
+  const datasets = series.map(s => {
+    if(s.markers){
+      const radii = s.values.map(v => v === 0 ? 0 : Math.min(4 + v * 1.6, 11));
+      return {
+        label: s.label,
+        data: s.values,
+        showLine: false,
+        borderColor: s.color,
+        backgroundColor: s.color,
+        pointBackgroundColor: s.color,
+        pointBorderColor: s.color,
+        pointRadius: radii,
+        pointHoverRadius: radii.map(r => r === 0 ? 0 : r + 2)
+      };
+    }
+    return {
+      label: s.label,
+      data: s.values,
+      borderColor: s.color,
+      backgroundColor: 'transparent',
+      borderWidth: 2.5,
+      pointRadius: 0,
+      tension: 0.35
+    };
+  });
 
   const ctx = document.getElementById(canvasId).getContext('2d');
   if(lineChartInstances[canvasId]) lineChartInstances[canvasId].destroy();
@@ -383,7 +397,7 @@ function renderAll(){
   const bt = buildBuckets(ENTRY_TIMESTAMPS_UTC, toNyMinutesOfDay);
   document.getElementById('tradeCountLabel').textContent = bt.total + ' trades';
   renderLineChart('lineChart', bt.labels, [
-    { values: bt.values, color: blueLine, dotted: false, label: 'All trades' }
+    { values: bt.values, color: blueLine, markers: false, label: 'All trades' }
   ]);
   renderHeatmap('heatmapRow', 'heatmapAxis', bt.labels, bt.values);
 
@@ -392,9 +406,9 @@ function renderAll(){
   const p1Losses = buildBuckets(PHASE1_ENTRY_TIMESTAMPS, toLiteralMinutesOfDay, PHASE1_ENTRY_OUTCOMES, 'LOSS');
   document.getElementById('tradeCountLabel2').textContent = p1.total + ' trades';
   renderLineChart('lineChart2', p1.labels, [
-    { values: p1.values, color: blueLine, dotted: false, label: 'All trades' },
-    { values: p1Wins.values, color: greenLine, dotted: true, label: 'Wins' },
-    { values: p1Losses.values, color: redLine, dotted: true, label: 'Losses' }
+    { values: p1.values, color: blueLine, markers: false, label: 'All trades' },
+    { values: p1Wins.values, color: greenLine, markers: true, label: 'Wins' },
+    { values: p1Losses.values, color: redLine, markers: true, label: 'Losses' }
   ]);
   renderHeatmap('heatmapRow2', 'heatmapAxis2', p1.labels, p1.values);
 }
