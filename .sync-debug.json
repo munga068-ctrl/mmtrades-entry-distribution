@@ -5,18 +5,30 @@
     "attempts": [
       {
         "url": "https://api.notion.com/v1/data_sources/207f7bb7-7d6d-80d7-b4f0-000bec43a2e3/query",
-        "ok": true,
-        "rows": 117
+        "ok": false,
+        "error": "HTTP 502: <html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n<hr><center>cloudflare</center>\r\n</body>\r\n</html>\r\n"
+      },
+      {
+        "url": "https://api.notion.com/v1/databases/207f7bb7-7d6d-80d7-b4f0-000bec43a2e3/query",
+        "ok": false,
+        "error": "HTTP 404: {\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"Could not find database with ID: 207f7bb7-7d6d-80d7-b4f0-000bec43a2e3. Make sure the relevant pages and databases are shared with your integration \\\"MMTrades Sync\\\".\",\"additional_data\":{\"integration_id\":\"3a0f7bb7-7d6d-8199-bd04-0027"
       }
-    ]
+    ],
+    "error": "HTTP 404: {\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"Could not find database with ID: 207f7bb7-7d6d-80d7-b4f0-000bec43a2e3. Make sure the relevant pages and databases are shared with your integration \\\"MMTrades Sync\\\".\",\"additional_data\":{\"integration_id\":\"3a0f7bb7-7d6d-8199-bd04-0027"
   },
   "phase1": {
     "attempts": [
       {
         "url": "https://api.notion.com/v1/data_sources/2c1f7bb7-7d6d-812c-b034-000bef8295e6/query",
-        "ok": true,
-        "rows": 58
+        "ok": false,
+        "error": "HTTP 502: <html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n<hr><center>cloudflare</center>\r\n</body>\r\n</html>\r\n"
+      },
+      {
+        "url": "https://api.notion.com/v1/databases/2c1f7bb7-7d6d-812c-b034-000bef8295e6/query",
+        "ok": false,
+        "error": "HTTP 404: {\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"Could not find database with ID: 2c1f7bb7-7d6d-812c-b034-000bef8295e6. Make sure the relevant pages and databases are shared with your integration \\\"MMTrades Sync\\\".\",\"additional_data\":{\"integration_id\":\"3a0f7bb7-7d6d-8199-bd04-0027"
       }
-    ]
+    ],
+    "error": "HTTP 404: {\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"Could not find database with ID: 2c1f7bb7-7d6d-812c-b034-000bef8295e6. Make sure the relevant pages and databases are shared with your integration \\\"MMTrades Sync\\\".\",\"additional_data\":{\"integration_id\":\"3a0f7bb7-7d6d-8199-bd04-0027"
   }
 }
